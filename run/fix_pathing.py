@@ -1,4 +1,4 @@
-# put this at the top of your files: "from fix_pathing import root_dir"
+# put this at the top of your files: from fix_pathing import root_dir
 
 import os
 import sys

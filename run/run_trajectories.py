@@ -13,6 +13,12 @@ from src.setup import construct_H, get_bonds
 from src.parameter_dataclasses import SimulationParameters
 from src.io import save_to_hdf5
 
+import os
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_MAX_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
 num_processes = cpu_count() - 1  # Leave one core free for the OS
 if num_processes < 1:
@@ -21,8 +27,8 @@ if num_processes < 1:
 # Simulation parameters
 dt = 0.1
 p = 0.15
-Nx = 3
-Ny = 3
+Nx = 10
+Ny = 10
 N = Nx*Ny
 b = 0.0 #2/((Nx-1)*(Ny-1))  # Magnetic field strength
 B = b*np.pi # Magnetic field in units of flux quantum

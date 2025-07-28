@@ -1,6 +1,7 @@
 import numpy as np
 from .initial_state import random_state
 from .parameter_dataclasses import SimulationParameters
+from tqdm import tqdm
 
 def apply_n(alpha, i, N):
 
@@ -110,6 +111,7 @@ def trajectory(procid, data, batch_size, steps, params: SimulationParameters):
     n_list_accumulated = np.zeros((steps+1, N), dtype=float)
     currents_list_accumulated = np.zeros((steps+1, len(bonds)), dtype=float)
     density_correlations_accumulated = np.zeros((N, N), dtype=float)
+
 
     for run in range(batch_size):
 

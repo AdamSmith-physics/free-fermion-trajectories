@@ -10,33 +10,33 @@ import pickle
 from src.initial_state import checkerboard_state, empty_state, random_state, product_state
 from src.simulation import trajectory
 from src.setup import construct_H, get_bonds
-
-plotting = True
-saving = not plotting
-
-plotting_threshold = 0.00  # Threshold for plotting currents
+from src.parameter_dataclasses import SimulationParameters
+from src.io import save_to_hdf5
 
 
 num_processes = cpu_count() - 1  # Leave one core free for the OS
 if num_processes < 1:
     raise ValueError("Not enough CPU cores available for multiprocessing.")
 
+# Simulation parameters
 dt = 0.1
 p = 0.15
-
-drive_type = "current"  # "current", "dephasing"
-corner_dephasing = False  # Whether to apply dephasing at the corners
-
 Nx = 3
 Ny = 3
 N = Nx*Ny
-
 b = 0.0 #2/((Nx-1)*(Ny-1))  # Magnetic field strength
 B = b*np.pi # Magnetic field in units of flux quantum
-
 t = 0.0  # Diagonal hopping
+num_iterations = 1000
+steps = 200
+site_in = 0  # Site where the current is injected
+site_out = N-1  # Site where the current is extracted
+drive_type = "current"  # "current", "dephasing"
+corner_dephasing = False  # Whether to apply dephasing at the corners
+initial_state = "random"  # "checkerboard", "empty", "random", "custom"
 
-num_iterations = 50000
+even_parity = False  # Only used for random state
+occupation_list = [0,1,0,1,1,0,1,0,0]  # Only used for custom state
 
 # Spread iterations across the available processes
 batch_size = [num_iterations // num_processes]*num_processes
@@ -44,21 +44,21 @@ batch_size = [num_iterations // num_processes]*num_processes
 for i in range(num_iterations % num_processes):
     batch_size[i] += 1
 
-
-
-steps = 500
-initial_state = "random"  # "checkerboard", "empty", "random", "custom"
-
-even_parity = False  # Only used for random state
-occupation_list = [0,1,0,1,1,0,1,0,0]  # Only used for custom state
-
 t_list = np.linspace(0, steps*dt, steps+1)
 # t_list = np.arange(0, (steps+1)*dt, dt)
 
-
-site_in = 0  # Site where the current is injected
-site_out = N-1  # Site where the current is extracted
-
+sim_params = SimulationParameters(
+    steps=steps,
+    Nx=Nx,
+    Ny=Ny,
+    p=p,
+    bonds=get_bonds(Nx, Ny, site_in, site_out, t=t),
+    site_in=site_in,
+    site_out=site_out,
+    drive_type=drive_type,
+    corner_dephasing=corner_dephasing,
+    initial_state=initial_state
+)
 
 if not drive_type in ["current", "dephasing"]:
     raise ValueError(f"Invalid drive_type: {drive_type}")
@@ -66,13 +66,11 @@ if not drive_type in ["current", "dephasing"]:
 if not initial_state in ["checkerboard", "empty", "random", "custom"]:
     raise ValueError(f"Invalid initial_state: {initial_state}")
 
-
+# Needed for multiprocessing
 if __name__ == "__main__":
 
     H = construct_H(Nx, Ny)
     U = expm(-1j*H*dt)
-
-    bonds = get_bonds(Nx, Ny, site_in, site_out, t=t)
 
     alpha = None
     if initial_state == "checkerboard":
@@ -106,10 +104,12 @@ if __name__ == "__main__":
 
     with Pool(processes=num_processes) as pool:
         for procid in range(num_processes):
-            pool.apply_async(trajectory, args=(procid, data, steps, batch_size[procid], Nx, Ny, p, bonds, site_in, site_out, drive_type, corner_dephasing, initial_state))
+            pool.apply_async(trajectory, args=(procid, data, batch_size[procid], steps, sim_params))
         pool.close()
         pool.join()
 
+
+    # # For debugging the parallel execution, you can uncomment the following lines:
     # for procid in range(num_iterations):
     #     trajectory(procid, data, steps, batch_size[procid], Nx, Ny, p, bonds, site_in, site_out, drive_type, corner_dephasing, initial_state)
         
@@ -126,11 +126,19 @@ if __name__ == "__main__":
     print(f"Time taken (parallel): {t2 - t1} seconds")
 
 
-    for i in range(N):
-        plt.plot(t_list, n_avg[:,i], label=f"n_{i}")
-    plt.plot(t_list, np.sum(n_avg, axis=1)/N, '--', c='k', label="n_avg")
-    plt.xlabel("Time")
-    plt.ylabel("Occupation")
-    # plt.legend()
-    # plt.xscale("log")
-    plt.show()
+    # Save results
+    results = {
+        "K_avg": K_avg,
+        "n_avg": n_avg,
+        "avg_currents": avg_currents,
+        "avg_dd_correlations": avg_dd_correlations,
+        "t_list": t_list,
+        "params": sim_params.to_dict()
+    }
+
+    # create data folder if it doesn't exist
+    import os
+    if not os.path.exists("../data"):
+        os.makedirs("../data")
+
+    save_to_hdf5(results, f"../data/ff_{Nx}x{Ny}_dt{dt}_p{p}_B{B}_t{t}_steps{steps}_trajectories{num_iterations}_{drive_type}_{initial_state}.h5")

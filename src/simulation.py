@@ -1,5 +1,6 @@
 import numpy as np
 from .initial_state import random_state
+from .parameter_dataclasses import SimulationParameters
 
 def apply_n(alpha, i, N):
 
@@ -88,13 +89,26 @@ def pick_kraus(C, p, N):
     return K_in, K_out
 
 
-def trajectory(procid, data, steps, batch_size, Nx, Ny, p, bonds, site_in, site_out, drive_type="current", corner_dephasing=False, initial_state="random"):
+def trajectory(procid, data, batch_size, steps, params: SimulationParameters):
+
+    # Unpack parameters ######
+    steps = params.steps
+    Nx = params.Nx
+    Ny = params.Ny
+    p = params.p
+    bonds = params.bonds
+    site_in = params.site_in
+    site_out = params.site_out
+    drive_type = params.drive_type
+    corner_dephasing = params.corner_dephasing
+    initial_state = params.initial_state
+    ###########################
 
     N = Nx*Ny
 
     K_list_accumulated = np.zeros((steps, 9), dtype=int)
     n_list_accumulated = np.zeros((steps+1, N), dtype=float)
-    currents_list_accumulated = np.zeros((steps+1, len(bonds)), dtype=complex)
+    currents_list_accumulated = np.zeros((steps+1, len(bonds)), dtype=float)
     density_correlations_accumulated = np.zeros((N, N), dtype=float)
 
     for run in range(batch_size):
@@ -110,10 +124,10 @@ def trajectory(procid, data, steps, batch_size, Nx, Ny, p, bonds, site_in, site_
 
         K_list = np.zeros((steps,9), dtype=int)
         n_list = np.zeros((steps+1, N), dtype=float)
-        currents_list = np.zeros((steps+1, len(bonds)), dtype=complex)
+        currents_list = np.zeros((steps+1, len(bonds)), dtype=float)
         
         n_list[0] = [np.real(C[N+i,N+i]) for i in range(N)]
-        currents_list[0] = [1j*(H[n1,n2]*C[n1+N,n2+N] - H[n2,n1]*C[n2+N,n1+N]) for n1, n2 in bonds]
+        currents_list[0] = [np.real(1j*(H[n1,n2]*C[n1+N,n2+N] - H[n2,n1]*C[n2+N,n1+N])) for n1, n2 in bonds]
         for step in range(steps):
 
             alpha = U @ alpha
@@ -158,7 +172,7 @@ def trajectory(procid, data, steps, batch_size, Nx, Ny, p, bonds, site_in, site_
 
             n_list[step+1] = [np.real(C[N+i,N+i]) for i in range(N)]
 
-            currents_list[step+1] = [1j*(H[n1,n2]*C[n1+N,n2+N] - H[n2,n1]*C[n2+N,n1+N]) for n1, n2 in bonds]
+            currents_list[step+1] = [np.real(1j*(H[n1,n2]*C[n1+N,n2+N] - H[n2,n1]*C[n2+N,n1+N])) for n1, n2 in bonds]
 
             if step == steps - 1:
                 # Compute the density-density correlation matrix using Wick's theorem

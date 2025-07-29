@@ -27,8 +27,8 @@ if num_processes < 1:
 # Simulation parameters
 dt = 0.1
 p = 0.15
-Nx = 10
-Ny = 10
+Nx = 4
+Ny = 4
 N = Nx*Ny
 b = 0.0 #2/((Nx-1)*(Ny-1))  # Magnetic field strength
 B = b*np.pi # Magnetic field in units of flux quantum

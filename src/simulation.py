@@ -72,12 +72,12 @@ def apply_cdag_1_minus_n(alpha, i, N):
     return alpha
 
 
-def pick_kraus(C, p, N):
+def pick_kraus(C, p, N, site_in, site_out):
 
     p_capped = max(0, min(p, 1))  # Ensure p is between 0 and 1
 
-    n_in = np.real(C[N,N])
-    n_out = np.real(C[2*N-1, 2*N-1])
+    n_in = np.real(C[N+site_in,N+site_in])
+    n_out = np.real(C[N+site_out,N+site_out])
 
     probs_in = np.cumsum([1-p_capped, p_capped*(1-n_in), p_capped*n_in])
     probs_out = np.cumsum([1-p_capped, p_capped*(1-n_out), p_capped*n_out])
@@ -135,7 +135,7 @@ def trajectory(procid, data, batch_size, steps, params: SimulationParameters):
             alpha = U @ alpha
 
             C = alpha @ alpha.T.conj()
-            K_in, _ = pick_kraus(C, p, N)
+            K_in, _ = pick_kraus(C, p, N, site_in, site_out)
 
             if K_in == 1:
                 if drive_type == "current":
@@ -147,7 +147,7 @@ def trajectory(procid, data, batch_size, steps, params: SimulationParameters):
 
             
             C = alpha @ alpha.T.conj()
-            _, K_out = pick_kraus(C, p, N)
+            _, K_out = pick_kraus(C, p, N, site_in, site_out)
 
             if K_out == 1:
                 alpha = apply_1_minus_n(alpha, site_out, N)

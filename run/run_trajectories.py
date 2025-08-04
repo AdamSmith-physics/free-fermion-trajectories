@@ -25,8 +25,8 @@ if num_processes < 1:
     raise ValueError("Not enough CPU cores available for multiprocessing.")
 
 # Simulation parameters
-dt = 0.1
-p = 0.15
+dt = 0.25
+p = 0.25
 Nx = 4
 Ny = 4
 N = Nx*Ny
@@ -34,7 +34,7 @@ b = 0.0 #2/((Nx-1)*(Ny-1))  # Magnetic field strength
 B = b*np.pi # Magnetic field in units of flux quantum
 t = 0.0  # Diagonal hopping
 num_iterations = 1000
-steps = 200
+steps = 50
 site_in = 0  # Site where the current is injected
 site_out = N-1  # Site where the current is extracted
 drive_type = "current"  # "current", "dephasing"
@@ -144,7 +144,17 @@ if __name__ == "__main__":
 
     # create data folder if it doesn't exist
     import os
-    if not os.path.exists("../data"):
-        os.makedirs("../data")
+    current_folder = os.getcwd().split("/")[-1]
 
-    save_to_hdf5(results, f"../data/ff_{Nx}x{Ny}_dt{dt}_p{p}_B{B}_t{t}_steps{steps}_trajectories{num_iterations}_{drive_type}_{initial_state}.h5")
+    if current_folder == "free-fermion-trajectories":
+        if not os.path.exists("data"):
+            os.makedirs("data")
+        prefix = "data/"
+    elif current_folder == "run":
+        if not os.path.exists("../data"):
+            os.makedirs("../data")
+        prefix = "../data/"
+    else:
+        raise ValueError(f"Unexpected current folder: {current_folder}. Expected 'free-fermion-trajectories' or 'run'.")
+
+    save_to_hdf5(results, prefix + f"ff_{Nx}x{Ny}_dt{dt}_p{p}_B{B}_t{t}_steps{steps}_trajectories{num_iterations}_{drive_type}_{initial_state}.h5")

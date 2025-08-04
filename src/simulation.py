@@ -1,7 +1,7 @@
 import numpy as np
 from .initial_state import random_state
 from .parameter_dataclasses import SimulationParameters
-from tqdm import tqdm
+# from tqdm import tqdm
 
 def apply_n(alpha, i, N):
 
